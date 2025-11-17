@@ -1,43 +1,205 @@
-<link rel="stylesheet" href="style.css">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Study Planner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <div class="container">
-    <h1>passcode generator</h1>
+<style>
+:root {
+    --bg: #fff5f8;
+    --card-bg: #ffe9f1;
+    --text: #2a6369;
+    --accent: #ff66a3;
+    --hover-shadow: rgba(255,102,163,0.2);
+}
 
-    <div class="output-area">
-      <input id="passcode" type="text" readonly>
-      <button id="copyBtn">Copy</button>
+body {
+    margin: 0;
+    font-family: "Times New Roman", serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 50px 20px;
+}
+
+.container {
+    max-width: 900px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    font-size: 36px;
+    margin-bottom: 40px;
+    color: var(--accent);
+}
+
+input, select, button {
+    font-family: "Times New Roman", serif;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 8px;
+    border: 1px solid #ffd0e0;
+    width: 100%;
+    font-size: 16px;
+}
+
+button {
+    background: var(--accent);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover { opacity: 0.85; }
+
+.form-section {
+    margin-bottom: 30px;
+}
+
+.task-card {
+    background: var(--card-bg);
+    padding: 18px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px var(--hover-shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.3s;
+}
+
+.task-card:hover {
+    transform: translateY(-3px);
+}
+
+.task-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.task-info span {
+    font-size: 14px;
+    color: #6e6e73;
+}
+
+.delete-btn {
+    font-size: 20px;
+    color: #ff4b5c;
+    cursor: pointer;
+}
+
+.delete-btn:hover { color: #ff1e2d; }
+
+.timeline {
+    display: flex;
+    flex-direction: column;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>AI Study Planner</h1>
+
+    <div class="form-section">
+        <input type="text" id="taskName" placeholder="Assignment / Test Name">
+        <input type="text" id="subject" placeholder="Subject">
+        <input type="date" id="dueDate">
+        <select id="priority">
+            <option value="High">High Priority</option>
+            <option value="Medium">Medium Priority</option>
+            <option value="Low">Low Priority</option>
+        </select>
+        <button onclick="addTask()">Add Task</button>
     </div>
 
-    <div class="settings">
-      
-      <label>
-        Length: 
-        <input id="length" type="number" value="12" min="4" max="50">
-      </label>
+    <div class="timeline" id="taskTimeline"></div>
+</div>
 
-      <label>
-        <input id="lower" type="checkbox" checked>
-        Lowercase
-      </label>
+<script>
+// Load tasks from localStorage
+let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-      <label>
-        <input id="upper" type="checkbox" checked>
-        Uppercase
-      </label>
+// Save to localStorage
+function save() {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+}
 
-      <label>
-        <input id="numbers" type="checkbox" checked>
-        Numbers
-      </label>
+// Add task
+function addTask() {
+    const name = document.getElementById("taskName").value.trim();
+    const subject = document.getElementById("subject").value.trim();
+    const due = document.getElementById("dueDate").value;
+    const priority = document.getElementById("priority").value;
 
-      <label>
-        <input id="symbols" type="checkbox">
-        Symbols
-      </label>
+    if (!name || !subject || !due) return;
 
-    </div>
+    tasks.push({ name, subject, due, priority });
+    document.getElementById("taskName").value = "";
+    document.getElementById("subject").value = "";
+    document.getElementById("dueDate").value = "";
+    document.getElementById("priority").value = "Medium";
 
-    <button class="generate" onclick="generatePasscode()">generate passcode</button>
-  </div>
+    save();
+    renderTasks();
+}
 
-  <script src="script.js"></script>
+// Delete task
+function deleteTask(index) {
+    tasks.splice(index, 1);
+    save();
+    renderTasks();
+}
+
+// Sort tasks by AI logic: urgency + priority
+function sortTasksAI() {
+    const priorityScore = { "High": 3, "Medium": 2, "Low": 1 };
+    const today = new Date();
+
+    return tasks.slice().sort((a, b) => {
+        const dateA = new Date(a.due);
+        const dateB = new Date(b.due);
+
+        const urgencyA = (dateA - today)/1000/3600/24; // days until due
+        const urgencyB = (dateB - today)/1000/3600/24;
+
+        const scoreA = (priorityScore[a.priority] * 2) - urgencyA;
+        const scoreB = (priorityScore[b.priority] * 2) - urgencyB;
+
+        return scoreB - scoreA; // highest priority first
+    });
+}
+
+// Render tasks
+function renderTasks() {
+    const container = document.getElementById("taskTimeline");
+    container.innerHTML = "";
+
+    const sortedTasks = sortTasksAI();
+    sortedTasks.forEach((task, index) => {
+        const div = document.createElement("div");
+        div.className = "task-card";
+
+        div.innerHTML = `
+            <div class="task-info">
+                <strong>${task.name}</strong>
+                <span>${task.subject}</span>
+                <span>Due: ${task.due} | Priority: ${task.priority}</span>
+            </div>
+            <span class="delete-btn" onclick="deleteTask(${index})">&times;</span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// Initial render
+renderTasks();
+</script>
+
+</body>
+</html>
